@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 """
-Grabar datos EEG a un archivo CSV
+Record EEG data to a CSV file
 
-Requisitos:
-- muselsl stream debe estar corriendo en otra terminal
+Requirements:
+- muselsl stream must be running in another terminal
 
-Uso:
-    python examples/record_eeg.py                    # Graba 60 segundos
-    python examples/record_eeg.py --duration 120    # Graba 120 segundos
-    python examples/record_eeg.py --output mi_sesion.csv
+Usage:
+    python examples/record_eeg.py                    # Records 60 seconds
+    python examples/record_eeg.py --duration 120    # Records 120 seconds
+    python examples/record_eeg.py --output my_session.csv
 """
 
 import argparse
@@ -21,44 +21,44 @@ import numpy as np
 CHANNELS = ['TP9', 'AF7', 'AF8', 'TP10']
 
 def main():
-    parser = argparse.ArgumentParser(description='Grabar datos EEG a CSV')
+    parser = argparse.ArgumentParser(description='Record EEG data to CSV')
     parser.add_argument('--duration', '-d', type=int, default=60,
-                        help='Duración de la grabación en segundos (default: 60)')
+                        help='Recording duration in seconds (default: 60)')
     parser.add_argument('--output', '-o', type=str, default=None,
-                        help='Nombre del archivo de salida (default: eeg_YYYYMMDD_HHMMSS.csv)')
+                        help='Output filename (default: eeg_YYYYMMDD_HHMMSS.csv)')
     args = parser.parse_args()
     
     print("=" * 50)
-    print("GRABADOR EEG - Guardar datos a CSV")
+    print("EEG RECORDER - Save data to CSV")
     print("=" * 50)
-    print(f"\nDuración configurada: {args.duration} segundos")
-    print("\nBuscando stream EEG...")
+    print(f"\nConfigured duration: {args.duration} seconds")
+    print("\nLooking for EEG stream...")
     
     streams = resolve_byprop('type', 'EEG', timeout=10)
     
     if not streams:
-        print("\n❌ ERROR: No se encontró stream EEG.")
-        print("   Asegúrate de ejecutar primero:")
-        print("   muselsl stream --address <TU_MAC_ADDRESS>")
+        print("\n❌ ERROR: No EEG stream found.")
+        print("   Make sure to run first:")
+        print("   muselsl stream --address <YOUR_MAC_ADDRESS>")
         return
     
     inlet = StreamInlet(streams[0])
     info = inlet.info()
     fs = int(info.nominal_srate())
     
-    print(f"\n✅ Conectado a: {info.name()}")
-    print(f"   Frecuencia: {fs} Hz")
+    print(f"\n✅ Connected to: {info.name()}")
+    print(f"   Sample rate: {fs} Hz")
     
-    # Nombre del archivo
+    # Output filename
     if args.output:
         filename = args.output
     else:
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         filename = f"eeg_{timestamp}.csv"
     
-    print(f"\n📁 Archivo de salida: {filename}")
+    print(f"\n📁 Output file: {filename}")
     print("\n" + "-" * 50)
-    print("Grabando... (Ctrl+C para detener antes)")
+    print("Recording... (Ctrl+C to stop early)")
     print("-" * 50)
     
     samples_collected = 0
@@ -75,24 +75,24 @@ def main():
                 writer.writerow([timestamp] + list(sample[:4]))
                 samples_collected += 1
                 
-                # Mostrar progreso cada segundo
+                # Show progress every second
                 if samples_collected % fs == 0:
                     elapsed = time.time() - start_time
                     remaining = args.duration - elapsed
                     progress = (samples_collected / total_samples) * 100
-                    print(f"\r  Progreso: {progress:5.1f}% | "
-                          f"Tiempo restante: {remaining:5.1f}s | "
-                          f"Muestras: {samples_collected}", end="")
+                    print(f"\r  Progress: {progress:5.1f}% | "
+                          f"Time remaining: {remaining:5.1f}s | "
+                          f"Samples: {samples_collected}", end="")
         
-        print(f"\n\n✅ Grabación completada!")
-        print(f"   Archivo: {filename}")
-        print(f"   Muestras: {samples_collected}")
-        print(f"   Duración real: {time.time() - start_time:.1f}s")
+        print(f"\n\n✅ Recording completed!")
+        print(f"   File: {filename}")
+        print(f"   Samples: {samples_collected}")
+        print(f"   Actual duration: {time.time() - start_time:.1f}s")
         
     except KeyboardInterrupt:
-        print(f"\n\n⚠️  Grabación detenida por el usuario")
-        print(f"   Archivo: {filename}")
-        print(f"   Muestras grabadas: {samples_collected}")
+        print(f"\n\n⚠️  Recording stopped by user")
+        print(f"   File: {filename}")
+        print(f"   Samples recorded: {samples_collected}")
 
 if __name__ == "__main__":
     main()

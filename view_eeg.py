@@ -1,48 +1,48 @@
 #!/usr/bin/env python3
 """
-Visualizador EEG para Muse usando LSL
-No requiere Tkinter - usa matplotlib con backend macosx
+EEG Visualizer for Muse using LSL
+Does not require Tkinter - uses matplotlib with macosx backend
 """
 
 import numpy as np
 import matplotlib
-matplotlib.use('macosx')  # Backend nativo de macOS, no requiere Tk
+matplotlib.use('macosx')  # Native macOS backend, no Tk required
 import matplotlib.pyplot as plt
 from pylsl import StreamInlet, resolve_byprop
 
-# Configuración
-BUFFER_LENGTH = 5  # segundos de datos a mostrar
-EPOCH_LENGTH = 1   # segundos por época
-CHANNELS = ['TP9', 'AF7', 'AF8', 'TP10']  # Canales del Muse
+# Configuration
+BUFFER_LENGTH = 5  # seconds of data to display
+EPOCH_LENGTH = 1   # seconds per epoch
+CHANNELS = ['TP9', 'AF7', 'AF8', 'TP10']  # Muse channels
 
 def main():
-    print("Buscando stream EEG...")
+    print("Looking for EEG stream...")
     streams = resolve_byprop('type', 'EEG', timeout=10)
     
     if not streams:
-        print("ERROR: No se encontró stream EEG.")
-        print("Asegúrate de que 'muselsl stream' esté corriendo en otra terminal.")
+        print("ERROR: No EEG stream found.")
+        print("Make sure 'muselsl stream' is running in another terminal.")
         return
     
-    print(f"Stream encontrado: {streams[0].name()}")
+    print(f"Stream found: {streams[0].name()}")
     inlet = StreamInlet(streams[0], max_chunklen=12)
     
-    # Info del stream
+    # Stream info
     info = inlet.info()
     fs = int(info.nominal_srate())
     n_samples = int(BUFFER_LENGTH * fs)
     n_channels = info.channel_count()
     
-    print(f"Frecuencia de muestreo: {fs} Hz")
-    print(f"Canales: {n_channels}")
+    print(f"Sample rate: {fs} Hz")
+    print(f"Channels: {n_channels}")
     
-    # Buffer circular para datos
+    # Circular buffer for data
     eeg_buffer = np.zeros((n_samples, n_channels))
     
-    # Configurar figura
+    # Configure figure
     plt.ion()
     fig, axes = plt.subplots(n_channels, 1, figsize=(12, 8), sharex=True)
-    fig.suptitle('Muse EEG - Tiempo Real', fontsize=14)
+    fig.suptitle('Muse EEG - Real Time', fontsize=14)
     
     lines = []
     time_axis = np.linspace(-BUFFER_LENGTH, 0, n_samples)
@@ -51,33 +51,33 @@ def main():
         line, = ax.plot(time_axis, eeg_buffer[:, i], 'b-', linewidth=0.5)
         lines.append(line)
         ax.set_ylabel(CHANNELS[i] if i < len(CHANNELS) else f'Ch{i+1}')
-        ax.set_ylim(-200, 200)  # microvolts típicos
+        ax.set_ylim(-200, 200)  # typical microvolts
         ax.grid(True, alpha=0.3)
     
-    axes[-1].set_xlabel('Tiempo (s)')
+    axes[-1].set_xlabel('Time (s)')
     plt.tight_layout()
     
-    print("Visualizando... (Ctrl+C para salir)")
+    print("Visualizing... (Ctrl+C to exit)")
     
     try:
         while plt.fignum_exists(fig.number):
-            # Obtener datos del stream
+            # Get data from stream
             chunk, timestamps = inlet.pull_chunk(timeout=0.0, max_samples=12)
             
             if chunk:
                 chunk = np.array(chunk)
-                # Actualizar buffer circular
+                # Update circular buffer
                 eeg_buffer = np.roll(eeg_buffer, -len(chunk), axis=0)
                 eeg_buffer[-len(chunk):, :] = chunk
                 
-                # Actualizar gráficas
+                # Update graphs
                 for i, line in enumerate(lines):
                     line.set_ydata(eeg_buffer[:, i])
             
             plt.pause(0.01)
             
     except KeyboardInterrupt:
-        print("\nDetenido por el usuario.")
+        print("\nStopped by user.")
     finally:
         plt.close()
 

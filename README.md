@@ -1,163 +1,163 @@
-# Muse EEG - Guía Completa
+# Muse EEG - Complete Guide
 
-Conecta, transmite y visualiza datos EEG de tu banda **Muse** usando Python y LSL (Lab Streaming Layer).
+Connect, stream, and visualize EEG data from your **Muse** headband using Python and LSL (Lab Streaming Layer).
 
-## 📋 Requisitos Previos
+## 📋 Prerequisites
 
 ### Hardware
-- **Banda Muse** (Muse 2, Muse S, o Muse original)
-- **Mac** con Bluetooth (probado en macOS)
-- La banda debe estar **cargada y encendida**
+- **Muse headband** (Muse 2, Muse S, or original Muse)
+- **Mac** with Bluetooth (tested on macOS)
+- The headband must be **charged and turned on**
 
 ### Software
-- **Python 3.10+** (recomendado 3.12)
-- **Bluetooth activado** en tu Mac
-- **Git** (para clonar el repositorio)
+- **Python 3.10+** (recommended 3.12)
+- **Bluetooth enabled** on your Mac
+- **Git** (to clone the repository)
 
 ---
 
-## 🚀 Instalación Paso a Paso
+## 🚀 Step-by-Step Installation
 
-### 1. Clonar el repositorio
+### 1. Clone the repository
 
 ```bash
 git clone https://github.com/ebaenamar/eeg_muse_basic.git
 cd eeg_muse_basic
 ```
 
-### 2. Crear entorno virtual
+### 2. Create virtual environment
 
 ```bash
 python3 -m venv venv
 source venv/bin/activate
 ```
 
-### 3. Instalar dependencias
+### 3. Install dependencies
 
 ```bash
 pip install --upgrade pip
 pip install -r requirements.txt
 ```
 
-### 4. (Solo macOS) Si tienes problemas con Tkinter
+### 4. (macOS only) If you have Tkinter issues
 
-Si `muselsl view` da error de Tkinter, usa el visualizador alternativo incluido (`view_eeg.py`).
+If `muselsl view` gives a Tkinter error, use the alternative visualizer included (`view_eeg.py`).
 
 ---
 
-## 🎯 Uso Básico
+## 🎯 Basic Usage
 
-### Paso 1: Activar Bluetooth y encender tu Muse
+### Step 1: Enable Bluetooth and turn on your Muse
 
-1. Ve a **Preferencias del Sistema → Bluetooth → Activar**
-2. Enciende tu banda Muse (mantén presionado el botón hasta que parpadee)
-3. Colócala en tu cabeza para mejor detección
+1. Go to **System Preferences → Bluetooth → Turn On**
+2. Turn on your Muse headband (hold the button until it blinks)
+3. Place it on your head for better detection
 
-### Paso 2: Buscar tu dispositivo Muse
+### Step 2: Find your Muse device
 
 ```bash
 source venv/bin/activate
 muselsl list
 ```
 
-Salida esperada:
+Expected output:
 ```
 Searching for Muses, this may take up to 10 seconds...
 Found device Muse-XXXX, MAC Address XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX
 ```
 
-**Guarda la MAC Address**, la necesitarás para conectar.
+**Save the MAC Address**, you'll need it to connect.
 
-### Paso 3: Iniciar streaming EEG
+### Step 3: Start EEG streaming
 
-En una terminal:
+In a terminal:
 
 ```bash
 source venv/bin/activate
-muselsl stream --address <TU_MAC_ADDRESS>
+muselsl stream --address <YOUR_MAC_ADDRESS>
 ```
 
-Ejemplo:
+Example:
 ```bash
 muselsl stream --address 4BEE1E10-85F7-FB8C-49E2-17174042399F
 ```
 
-Salida esperada:
+Expected output:
 ```
 Connecting to Muse: XXXXXXXX...
 Connected.
 Streaming EEG...
 ```
 
-**Deja esta terminal abierta** mientras trabajas con los datos.
+**Keep this terminal open** while working with the data.
 
-### Paso 4: Visualizar EEG en tiempo real
+### Step 4: Visualize EEG in real-time
 
-Abre **otra terminal**:
+Open **another terminal**:
 
 ```bash
 source venv/bin/activate
 python view_eeg.py
 ```
 
-Verás una ventana con 4 gráficas (una por cada canal EEG):
-- **TP9** - Temporal izquierdo
-- **AF7** - Frontal izquierdo
-- **AF8** - Frontal derecho
-- **TP10** - Temporal derecho
+You'll see a window with 4 graphs (one for each EEG channel):
+- **TP9** - Left temporal
+- **AF7** - Left frontal
+- **AF8** - Right frontal
+- **TP10** - Right temporal
 
 ---
 
-## 📊 Trabajar con el Stream EEG
+## 📊 Working with the EEG Stream
 
-### Opción A: Grabar datos a CSV
+### Option A: Record data to CSV
 
 ```bash
 muselsl record --duration 60
 ```
 
-Esto graba 60 segundos de datos EEG a un archivo CSV.
+This records 60 seconds of EEG data to a CSV file.
 
-### Opción B: Acceder al stream desde Python
+### Option B: Access the stream from Python
 
 ```python
 from pylsl import StreamInlet, resolve_byprop
 import numpy as np
 
-# Buscar stream EEG
-print("Buscando stream EEG...")
+# Find EEG stream
+print("Looking for EEG stream...")
 streams = resolve_byprop('type', 'EEG', timeout=10)
 
 if not streams:
-    print("No se encontró stream. ¿Está corriendo 'muselsl stream'?")
+    print("No stream found. Is 'muselsl stream' running?")
     exit()
 
-# Conectar al stream
+# Connect to stream
 inlet = StreamInlet(streams[0])
 info = inlet.info()
 
-print(f"Conectado a: {info.name()}")
-print(f"Frecuencia: {info.nominal_srate()} Hz")
-print(f"Canales: {info.channel_count()}")
+print(f"Connected to: {info.name()}")
+print(f"Sample rate: {info.nominal_srate()} Hz")
+print(f"Channels: {info.channel_count()}")
 
-# Leer datos continuamente
+# Read data continuously
 while True:
     sample, timestamp = inlet.pull_sample()
     print(f"[{timestamp:.3f}] {np.array(sample)}")
 ```
 
-### Opción C: Analizar bandas de frecuencia
+### Option C: Analyze frequency bands
 
 ```python
 from pylsl import StreamInlet, resolve_byprop
 import numpy as np
 from scipy import signal
 
-# Configuración
-FS = 256  # Frecuencia de muestreo del Muse
-WINDOW = 256  # 1 segundo de datos
+# Configuration
+FS = 256  # Muse sample rate
+WINDOW = 256  # 1 second of data
 
-# Bandas de frecuencia EEG
+# EEG frequency bands
 BANDS = {
     'Delta': (0.5, 4),
     'Theta': (4, 8),
@@ -167,100 +167,100 @@ BANDS = {
 }
 
 def get_band_power(data, fs, band):
-    """Calcula la potencia en una banda de frecuencia."""
+    """Calculate power in a frequency band."""
     low, high = band
-    # Filtro butterworth
+    # Butterworth filter
     b, a = signal.butter(4, [low/(fs/2), high/(fs/2)], btype='band')
     filtered = signal.filtfilt(b, a, data)
     return np.mean(filtered ** 2)
 
-# Conectar al stream
+# Connect to stream
 streams = resolve_byprop('type', 'EEG', timeout=10)
 inlet = StreamInlet(streams[0])
 
 buffer = []
 
-print("Analizando bandas de frecuencia...")
+print("Analyzing frequency bands...")
 print("-" * 50)
 
 while True:
     sample, _ = inlet.pull_sample()
-    buffer.append(sample[0])  # Canal TP9
+    buffer.append(sample[0])  # TP9 channel
     
     if len(buffer) >= WINDOW:
         data = np.array(buffer[-WINDOW:])
         
-        print("\nPotencia por banda (TP9):")
+        print("\nPower by band (TP9):")
         for name, band in BANDS.items():
             power = get_band_power(data, FS, band)
             bar = "█" * int(power / 10)
             print(f"  {name:6s}: {power:8.2f} {bar}")
         
-        buffer = buffer[-WINDOW//2:]  # Overlap 50%
+        buffer = buffer[-WINDOW//2:]  # 50% overlap
 ```
 
 ---
 
-## 🔧 Comandos Útiles de muselsl
+## 🔧 Useful muselsl Commands
 
-| Comando | Descripción |
+| Command | Description |
 |---------|-------------|
-| `muselsl list` | Buscar dispositivos Muse cercanos |
-| `muselsl stream -a <MAC>` | Iniciar streaming EEG |
-| `muselsl stream -a <MAC> -p` | Incluir datos PPG (ritmo cardíaco) |
-| `muselsl stream -a <MAC> --acc` | Incluir acelerómetro |
-| `muselsl stream -a <MAC> --gyro` | Incluir giroscopio |
-| `muselsl record -d 60` | Grabar 60 segundos a CSV |
-| `muselsl view` | Visualizar (requiere Tkinter) |
+| `muselsl list` | Find nearby Muse devices |
+| `muselsl stream -a <MAC>` | Start EEG streaming |
+| `muselsl stream -a <MAC> -p` | Include PPG data (heart rate) |
+| `muselsl stream -a <MAC> --acc` | Include accelerometer |
+| `muselsl stream -a <MAC> --gyro` | Include gyroscope |
+| `muselsl record -d 60` | Record 60 seconds to CSV |
+| `muselsl view` | Visualize (requires Tkinter) |
 
 ---
 
-## 🐛 Solución de Problemas
+## 🐛 Troubleshooting
 
 ### "Bluetooth device is turned off"
-- Activa Bluetooth en Preferencias del Sistema → Bluetooth
+- Enable Bluetooth in System Preferences → Bluetooth
 
 ### "No Muse devices found"
-- Asegúrate de que la banda esté encendida (luz parpadeando)
-- Acércala al computador
-- Reinicia la banda (apagar/encender)
-- Verifica que no esté conectada a otra app (Mind Monitor, Muse app)
+- Make sure the headband is on (light blinking)
+- Move it closer to the computer
+- Restart the headband (turn off/on)
+- Check it's not connected to another app (Mind Monitor, Muse app)
 
-### "No se encontró stream EEG"
-- Primero ejecuta `muselsl stream` en otra terminal
-- Espera a que diga "Streaming EEG..."
+### "No EEG stream found"
+- First run `muselsl stream` in another terminal
+- Wait until it says "Streaming EEG..."
 
-### Error de Tkinter con `muselsl view`
-- Usa `python view_eeg.py` en su lugar (incluido en este repo)
+### Tkinter error with `muselsl view`
+- Use `python view_eeg.py` instead (included in this repo)
 
-### Señal ruidosa o plana
-- Ajusta bien la banda en tu cabeza
-- Humedece ligeramente los sensores
-- Asegúrate de que los sensores de las orejas hagan buen contacto
+### Noisy or flat signal
+- Adjust the headband properly on your head
+- Slightly moisten the sensors
+- Make sure the ear sensors have good contact
 
-### Desconexiones frecuentes
-- Carga la banda completamente
-- Reduce la distancia al computador
-- Cierra otras apps que usen Bluetooth
+### Frequent disconnections
+- Fully charge the headband
+- Reduce distance to computer
+- Close other apps using Bluetooth
 
 ---
 
-## 📁 Estructura del Proyecto
+## 📁 Project Structure
 
 ```
 eeg_muse_basic/
-├── README.md           # Esta documentación
-├── requirements.txt    # Dependencias Python
-├── view_eeg.py         # Visualizador EEG (sin Tkinter)
-└── examples/           # Scripts de ejemplo
-    ├── record_eeg.py   # Grabar datos a CSV
-    ├── analyze_bands.py # Análisis de bandas de frecuencia
-    └── stream_basic.py # Ejemplo básico de lectura
+├── README.md           # This documentation
+├── requirements.txt    # Python dependencies
+├── view_eeg.py         # EEG visualizer (no Tkinter)
+└── examples/           # Example scripts
+    ├── record_eeg.py   # Record data to CSV
+    ├── analyze_bands.py # Frequency band analysis
+    └── stream_basic.py # Basic reading example
 ```
 
 ---
 
-## 📚 Recursos Adicionales
+## 📚 Additional Resources
 
 - [muselsl GitHub](https://github.com/alexandrebarachant/muse-lsl)
 - [pylsl Documentation](https://labstreaminglayer.readthedocs.io/)
@@ -268,6 +268,6 @@ eeg_muse_basic/
 
 ---
 
-## 📄 Licencia
+## 📄 License
 
-MIT License - Usa este código como quieras.
+MIT License - Use this code however you want.
